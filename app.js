@@ -54,6 +54,20 @@ app.get("/", function(req, res) {
     });
 });
 
+app.post("/delete", function(req, res){
+  const checkedItemId = req.body.checkbox;
+  Item.findByIdAndRemove(checkedItemId)
+    .then(() => {
+      console.log("ลบรายการเรียบร้อยแล้ว");
+      res.redirect("/");
+    })
+    .catch((err) => {
+      console.error("เกิดข้อผิดพลาดในการลบรายการ:", err);
+      res.redirect("/");
+    });
+});
+
+
 app.post("/", function(req, res) {
   const itemName = req.body.newItem;
 
