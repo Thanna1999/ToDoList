@@ -30,6 +30,14 @@ const item3 = new Item({
 
 const defaultItems = [item1, item2, item3];
 
+
+const listSchema = {
+  name: String,
+  items: [itemsSchema]
+}
+
+const List = mongoose.model("List", listSchema);
+
 app.get("/", function(req, res) {
   Item.find({})
     .then(foundItem => {
@@ -53,7 +61,10 @@ app.get("/", function(req, res) {
 
 app.post("/delete", function(req, res){
   const checkedItemId = req.body.checkbox;
-  Item.findByIdAndRemove(checkedItemId)
+  const listName= req.body.listName;
+
+  if (listName === "Today"){
+    Item.findByIdAndRemove(checkedItemId)
     .then(() => {
       console.log("ลบรายการเรียบร้อยแล้ว");
       res.redirect("/");
@@ -62,23 +73,78 @@ app.post("/delete", function(req, res){
       console.error("เกิดข้อผิดพลาดในการลบรายการ:", err);
       res.redirect("/");
     });
+  } else {
+    List.findOneAndUpdate({name: listName}, {$pull: {items: {_id: checkedItemId}}})
+    .then(() => {
+      res.redirect("/" + listName);
+
+  }
+
 });
+
 
 
 app.post("/", function(req, res) {
   const itemName = req.body.newItem;
-
+  const listName = req.body.list;
   const item = new Item({
     name: itemName
   });
 
-  item.save();
-  res.redirect("/");
+  if (listName === "Today") {
+    item.save()
+      .then(() => {
+        res.redirect("/");
+      })
+      .catch((err) => {
+        console.error("เกิดข้อผิดพลาดในการบันทึกข้อมูล:", err);
+      });
+  } else {
+    List.findOne({ name: listName })
+      .then((foundList) => {
+        if (!foundList) {
+          console.log("ไม่พบรายการ");
+          return;
+        }
+        foundList.items.push(item);
+        return foundList.save();
+      })
+      .then(() => {
+        res.redirect("/" + listName);
+      })
+      .catch((err) => {
+        console.error("เกิดข้อผิดพลาดในการค้นหาหรือบันทึกข้อมูล:", err);
+      });
+  }
 });
 
-app.get("/work", function(req, res) {
-  res.render("list", { listTitle: "Work List", newListItems: workItems });
+
+
+
+app.get("/:customListName", function(req, res){
+  const customListName = req.params.customListName;
+  
+  List.findOne({ name: customListName })
+  .then((foundList) => {
+    if (!foundList) {
+      // create a new list
+      const list = new List ({
+        name: customListName,
+        items: defaultItems
+      });
+      list.save();
+      res.redirect("/" + customListName);
+    } else {
+      // show an existing list
+      res.render("list", { listTitle: foundList.name, newListItems: foundList.items });
+    }
+  })
+  .catch((err) => {
+    console.error("เกิดข้อผิดพลาดในการค้นหา:", err);
+  });
+
 });
+      
 
 app.get("/about", function(req, res) {
   res.render("about");
