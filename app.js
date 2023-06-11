@@ -3,7 +3,9 @@
 const express = require("express");
 const bodyParser = require("body-parser");
 const mongoose = require("mongoose");
+const _ = require("lodash");
 const app = express();
+
 app.set("view engine", "ejs");
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static("public"));
@@ -30,11 +32,10 @@ const item3 = new Item({
 
 const defaultItems = [item1, item2, item3];
 
-
 const listSchema = {
   name: String,
   items: [itemsSchema]
-}
+};
 
 const List = mongoose.model("List", listSchema);
 
@@ -59,30 +60,34 @@ app.get("/", function(req, res) {
     });
 });
 
-app.post("/delete", function(req, res){
+app.post("/delete", function(req, res) {
   const checkedItemId = req.body.checkbox;
-  const listName= req.body.listName;
+  const listName = req.body.listName;
 
-  if (listName === "Today"){
+  if (listName === "Today") {
     Item.findByIdAndRemove(checkedItemId)
-    .then(() => {
-      console.log("ลบรายการเรียบร้อยแล้ว");
-      res.redirect("/");
-    })
-    .catch((err) => {
-      console.error("เกิดข้อผิดพลาดในการลบรายการ:", err);
-      res.redirect("/");
-    });
+      .then(() => {
+        console.log("ลบรายการเรียบร้อยแล้ว");
+        res.redirect("/");
+      })
+      .catch(err => {
+        console.error("เกิดข้อผิดพลาดในการลบรายการ:", err);
+        res.redirect("/");
+      });
   } else {
-    List.findOneAndUpdate({name: listName}, {$pull: {items: {_id: checkedItemId}}})
-    .then(() => {
-      res.redirect("/" + listName);
-
+    List.findOneAndUpdate(
+      { name: listName },
+      { $pull: { items: { _id: checkedItemId } } }
+    )
+      .then(() => {
+        res.redirect("/" + listName);
+      })
+      .catch(err => {
+        console.error("เกิดข้อผิดพลาดในการอัปเดตรายการ:", err);
+        res.redirect("/" + listName);
+      });
   }
-
 });
-
-
 
 app.post("/", function(req, res) {
   const itemName = req.body.newItem;
@@ -92,16 +97,17 @@ app.post("/", function(req, res) {
   });
 
   if (listName === "Today") {
-    item.save()
+    item
+      .save()
       .then(() => {
         res.redirect("/");
       })
-      .catch((err) => {
+      .catch(err => {
         console.error("เกิดข้อผิดพลาดในการบันทึกข้อมูล:", err);
       });
   } else {
     List.findOne({ name: listName })
-      .then((foundList) => {
+      .then(foundList => {
         if (!foundList) {
           console.log("ไม่พบรายการ");
           return;
@@ -112,39 +118,37 @@ app.post("/", function(req, res) {
       .then(() => {
         res.redirect("/" + listName);
       })
-      .catch((err) => {
+      .catch(err => {
         console.error("เกิดข้อผิดพลาดในการค้นหาหรือบันทึกข้อมูล:", err);
       });
   }
 });
 
+app.get("/:customListName", function(req, res) {
+  const customListName = _.capitalize(req.params.customListName);
 
-
-
-app.get("/:customListName", function(req, res){
-  const customListName = req.params.customListName;
-  
   List.findOne({ name: customListName })
-  .then((foundList) => {
-    if (!foundList) {
-      // create a new list
-      const list = new List ({
-        name: customListName,
-        items: defaultItems
-      });
-      list.save();
-      res.redirect("/" + customListName);
-    } else {
-      // show an existing list
-      res.render("list", { listTitle: foundList.name, newListItems: foundList.items });
-    }
-  })
-  .catch((err) => {
-    console.error("เกิดข้อผิดพลาดในการค้นหา:", err);
-  });
-
+    .then(foundList => {
+      if (!foundList) {
+        // create a new list
+        const list = new List({
+          name: customListName,
+          items: defaultItems
+        });
+        list.save();
+        res.redirect("/" + customListName);
+      } else {
+        // show an existing list
+        res.render("list", {
+          listTitle: foundList.name,
+          newListItems: foundList.items
+        });
+      }
+    })
+    .catch(err => {
+      console.error("เกิดข้อผิดพลาดในการค้นหา:", err);
+    });
 });
-      
 
 app.get("/about", function(req, res) {
   res.render("about");
