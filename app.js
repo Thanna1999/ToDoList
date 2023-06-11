@@ -41,8 +41,8 @@ const List = mongoose.model("List", listSchema);
 
 app.get("/", function(req, res) {
   Item.find({})
-    .then(foundItem => {
-      if (foundItem.length === 0) {
+    .then(foundItems => {
+      if (foundItems.length === 0) {
         Item.insertMany(defaultItems)
           .then(() => {
             console.log("Successfully added!");
@@ -52,7 +52,7 @@ app.get("/", function(req, res) {
           });
         res.redirect("/");
       } else {
-        res.render("list", { listTitle: "Today", newListItems: foundItem });
+        res.render("list", { listTitle: "Today", newListItems: foundItems });
       }
     })
     .catch(err => {
